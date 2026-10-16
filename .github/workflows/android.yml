@@ -58,8 +58,11 @@ jobs:
           unzip -q templates.tpz -d unpacked
           VERSION=$("$GODOT" --headless --version | head -n 1)
           echo "Godot version: $VERSION"
-          mkdir -p "$HOME/.local/share/godot/export_templates/$VERSION"
-          cp unpacked/templates/* "$HOME/.local/share/godot/export_templates/$VERSION/"
+          TEMPLATE_VERSION=$(echo "$VERSION" | sed -E 's/\.mono(\.|$)/\1/')
+          echo "Template directory version: $TEMPLATE_VERSION"
+          mkdir -p "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION"
+          cp unpacked/templates/* "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION/"
+          ls -l "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION/"android*
       - name: Configure debug signing
         shell: bash
         run: |
