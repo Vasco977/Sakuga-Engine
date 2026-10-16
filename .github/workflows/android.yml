@@ -69,9 +69,11 @@ jobs:
           export/android/debug_keystore_pass = "android"
           EOF
       - name: Restore C# dependencies
-        run: dotnet restore "Sakuga Engine.csproj"
+        run: |
+          dotnet restore "Sakuga Engine.csproj"
       - name: Import Godot resources
-        run: "$GODOT" --headless --editor --path . --import
+        run: |
+          "$GODOT" --headless --editor --path . --import
       - name: Export Android APK
         run: |
           mkdir -p build
