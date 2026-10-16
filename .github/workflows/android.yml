@@ -1,18 +1,84 @@
-name: Android APK diagnostic
+name: Sakuga Android APK build
 on:
   workflow_dispatch:
   push:
     paths:
       - '.github/workflows/android.yml'
 jobs:
-  check:
+  android:
     runs-on: ubuntu-latest
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
-      - name: Check project files
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android dependencies
         run: |
-          echo "GitHub Actions started successfully"
-          test -f project.godot
-          test -f "Sakuga Engine.csproj"
-          test -f export_presets.cfg
-          echo "Sakuga project files found"
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          dotnet workload install android
+      - name: Find official Godot 4.7 Mono release
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,os,sys
+          req=urllib.request.Request('https://api.github.com/repos/godotengine/godot-builds/releases?per_page=100',headers={'User-Agent':'Sakuga-Android-CI'})
+          releases=json.load(urllib.request.urlopen(req))
+          for release in releases:
+              if not release['tag_name'].startswith('4.7'): continue
+              assets=release.get('assets',[])
+              editor=next((a for a in assets if 'mono' in a['name'].lower() and 'linux_x86_64' in a['name'].lower() and a['name'].endswith('.zip')),None)
+              template=next((a for a in assets if 'export_templates' in a['name'] and a['name'].endswith('.tpz')),None)
+              if editor and template:
+                  with open(os.environ['GITHUB_ENV'],'a') as f:
+                      f.write('EDITOR_URL='+editor['browser_download_url']+'\n')
+                      f.write('TEMPLATE_URL='+template['browser_download_url']+'\n')
+                  print('Using:',release['tag_name'])
+                  sys.exit(0)
+          sys.exit('Godot 4.7 Mono release and templates not found. Need compatible Godot build.')
+          PY
+      - name: Install Godot and templates
+        shell: bash
+        run: |
+          curl -fL "$EDITOR_URL" -o godot.zip
+          mkdir -p godot-bin
+          unzip -q godot.zip -d godot-bin
+          GODOT=$(find "$PWD/godot-bin" -type f -name 'Godot*' ! -name '*.so' | head -n 1)
+          test -n "$GODOT"
+          chmod +x "$GODOT"
+          echo "GODOT=$GODOT" >> "$GITHUB_ENV"
+          curl -fL "$TEMPLATE_URL" -o templates.tpz
+          mkdir -p unpacked
+          unzip -q templates.tpz -d unpacked
+          VERSION=$("$GODOT" --headless --version | head -n 1)
+          echo "Godot version: $VERSION"
+          mkdir -p "$HOME/.local/share/godot/export_templates/$VERSION"
+          cp unpacked/templates/* "$HOME/.local/share/godot/export_templates/$VERSION/"
+      - name: Configure debug signing
+        shell: bash
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/debug_keystore = "$RUNNER_TEMP/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+      - name: Restore C# dependencies
+        run: dotnet restore "Sakuga Engine.csproj"
+      - name: Import Godot resources
+        run: "$GODOT" --headless --editor --path . --import
+      - name: Export Android APK
+        run: |
+          mkdir -p build
+          "$GODOT" --headless --path . --export-debug Android build/Sakuga-Android.apk
+          test -s build/Sakuga-Android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sakuga-Android-APK
+          path: build/Sakuga-Android.apk
+          if-no-files-found: error
