@@ -13,9 +13,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
-      - uses: android-actions/setup-android@v3
       - name: Install Android dependencies
         run: |
+          echo "Using preinstalled Android SDK at $ANDROID_HOME"
+          sdkmanager --version
+          yes | sdkmanager --licenses > /dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
           dotnet workload install android
       - name: Find official Godot 4.7 Mono release
