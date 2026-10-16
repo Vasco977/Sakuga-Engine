@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/android.yml'
       - 'Sakuga Engine.csproj'
+      - 'project.godot'
 jobs:
   android:
     runs-on: ubuntu-latest
