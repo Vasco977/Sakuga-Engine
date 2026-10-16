@@ -23,26 +23,10 @@ jobs:
           yes | sdkmanager --licenses > /dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
           dotnet workload install android
-      - name: Find official Godot 4.7 Mono release
-        shell: bash
+      - name: Use verified Godot 4.7.2 Mono release
         run: |
-          python3 - <<'PY'
-          import json,urllib.request,os,sys
-          req=urllib.request.Request('https://api.github.com/repos/godotengine/godot-builds/releases?per_page=100',headers={'User-Agent':'Sakuga-Android-CI'})
-          releases=json.load(urllib.request.urlopen(req))
-          for release in releases:
-              if not release['tag_name'].startswith('4.7'): continue
-              assets=release.get('assets',[])
-              editor=next((a for a in assets if 'mono' in a['name'].lower() and 'linux_x86_64' in a['name'].lower() and a['name'].endswith('.zip')),None)
-              template=next((a for a in assets if 'export_templates' in a['name'] and a['name'].endswith('.tpz')),None)
-              if editor and template:
-                  with open(os.environ['GITHUB_ENV'],'a') as f:
-                      f.write('EDITOR_URL='+editor['browser_download_url']+'\n')
-                      f.write('TEMPLATE_URL='+template['browser_download_url']+'\n')
-                  print('Using:',release['tag_name'])
-                  sys.exit(0)
-          sys.exit('Godot 4.7 Mono release and templates not found. Need compatible Godot build.')
-          PY
+          echo "EDITOR_URL=https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_mono_linux_x86_64.zip" >> "$GITHUB_ENV"
+          echo "TEMPLATE_URL=https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_export_templates.tpz" >> "$GITHUB_ENV"
       - name: Install Godot and templates
         shell: bash
         run: |
