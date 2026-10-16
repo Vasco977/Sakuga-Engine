@@ -62,7 +62,9 @@ jobs:
           echo "Template directory version: $TEMPLATE_VERSION"
           mkdir -p "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION"
           cp unpacked/templates/* "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION/"
-          ls -l "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION/"android*
+          mkdir -p "$HOME/.local/share/godot/export_templates/$VERSION"
+          cp unpacked/templates/* "$HOME/.local/share/godot/export_templates/$VERSION/"
+          ls -l "$HOME/.local/share/godot/export_templates/$VERSION/"android*
       - name: Configure debug signing
         shell: bash
         run: |
@@ -79,6 +81,8 @@ jobs:
       - name: Restore C# dependencies
         run: |
           dotnet restore "Sakuga Engine.csproj"
+      - name: Build C# assemblies
+        run: dotnet build "Sakuga Engine.csproj" --configuration Debug --no-restore
       - name: Import Godot resources
         run: |
           "$GODOT" --headless --editor --path . --import
