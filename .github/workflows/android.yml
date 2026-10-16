@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - '.github/workflows/android.yml'
+      - 'Sakuga Engine.csproj'
 jobs:
   android:
     runs-on: ubuntu-latest
