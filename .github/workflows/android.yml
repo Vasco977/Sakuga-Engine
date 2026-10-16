@@ -48,7 +48,7 @@ jobs:
           curl -fL "$EDITOR_URL" -o godot.zip
           mkdir -p godot-bin
           unzip -q godot.zip -d godot-bin
-          GODOT=$(find "$PWD/godot-bin" -type f -name 'Godot*' ! -name '*.so' | head -n 1)
+          GODOT=$(find "$PWD/godot-bin" -type f -name 'Godot*' ! -name '*.so' -print -quit)
           test -n "$GODOT"
           chmod +x "$GODOT"
           echo "GODOT=$GODOT" >> "$GITHUB_ENV"
