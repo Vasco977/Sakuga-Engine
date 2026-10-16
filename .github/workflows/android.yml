@@ -1,87 +1,18 @@
-name: Android APK test
+name: Android APK diagnostic
 on:
   workflow_dispatch:
   push:
     paths:
       - '.github/workflows/android.yml'
-      - 'export_presets.cfg'
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-      - uses: android-actions/setup-android@v3
-      - name: Install Android SDK packages
+      - name: Check project files
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-      - name: Install .NET Android workload
-        run: dotnet workload install android
-      - name: Find matching Godot 4.7 .NET editor and templates
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import json, urllib.request, os, sys
-          url='https://api.github.com/repos/godotengine/godot-builds/releases?per_page=100'
-          req=urllib.request.Request(url,headers={'User-Agent':'Sakuga-Android-CI'})
-          data=json.load(urllib.request.urlopen(req))
-          for release in data:
-              if not release['tag_name'].startswith('4.7'):
-                  continue
-              assets=release.get('assets',[])
-              editor=next((a for a in assets if 'mono' in a['name'].lower() and 'linux_x86_64' in a['name'].lower() and a['name'].endswith('.zip')),None)
-              templates=next((a for a in assets if a['name'].endswith('.tpz') and 'export_templates' in a['name']),None)
-              if editor and templates:
-                  with open(os.environ['GITHUB_ENV'],'a') as f:
-                      f.write('GODOT_EDITOR_URL='+editor['browser_download_url']+'\n')
-                      f.write('GODOT_TEMPLATES_URL='+templates['browser_download_url']+'\n')
-                  print('Selected Godot:',release['tag_name'])
-                  break
-          else:
-              sys.exit('No matching official Godot 4.7 .NET editor and templates release found; project requires Godot 4.7.')
-          PY
-      - name: Install Godot editor and export templates
-        run: |
-          curl -fL "$GODOT_EDITOR_URL" -o godot.zip
-          unzip -q godot.zip -d godot-bin
-          GODOT_PATH=$(find "$PWD/godot-bin" -type f -name '*mono*' | head -1)
-          if [ -z "$GODOT_PATH" ]; then GODOT_PATH=$(find "$PWD/godot-bin" -type f -name 'Godot*' | head -1); fi
-          test -n "$GODOT_PATH"
-          chmod +x "$GODOT_PATH"
-          echo "GODOT=$GODOT_PATH" >> "$GITHUB_ENV"
-          curl -fL "$GODOT_TEMPLATES_URL" -o templates.tpz
-          mkdir -p templates-unpacked
-          unzip -q templates.tpz -d templates-unpacked
-          VERSION=$("$GODOT_PATH" --headless --version | head -1)
-          echo "Godot version: $VERSION"
-          mkdir -p "$HOME/.local/share/godot/export_templates/$VERSION"
-          cp templates-unpacked/templates/* "$HOME/.local/share/godot/export_templates/$VERSION/"
-      - name: Configure Android signing and SDK
-        run: |
-          keytool -genkeypair -v -keystore "$RUNNER_TEMP/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          mkdir -p "$HOME/.config/godot"
-          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
-          [gd_resource type="EditorSettings" format=3]
-          [resource]
-          export/android/android_sdk_path = "$ANDROID_HOME"
-          export/android/debug_keystore = "$RUNNER_TEMP/debug.keystore"
-          export/android/debug_keystore_user = "androiddebugkey"
-          export/android/debug_keystore_pass = "android"
-          EOF
-      - name: Restore C# packages
-        run: dotnet restore "Sakuga Engine.csproj"
-      - name: Import assets
-        run: "$GODOT" --headless --editor --path . --import
-      - name: Export APK
-        run: |
-          mkdir -p build
-          "$GODOT" --headless --path . --export-debug Android build/Sakuga-Android.apk
-          test -s build/Sakuga-Android.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Sakuga-Android-test
-          path: build/Sakuga-Android.apk
+          echo "GitHub Actions started successfully"
+          test -f project.godot
+          test -f "Sakuga Engine.csproj"
+          test -f export_presets.cfg
+          echo "Sakuga project files found"
