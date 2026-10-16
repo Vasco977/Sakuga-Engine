@@ -6,6 +6,8 @@ on:
       - '.github/workflows/android.yml'
       - 'Sakuga Engine.csproj'
       - 'project.godot'
+permissions:
+  contents: write
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -80,6 +82,16 @@ jobs:
           mkdir -p build
           "$GODOT" --headless --path . --export-debug Android build/Sakuga-Android.apk
           test -s build/Sakuga-Android.apk
+      - name: Verify APK integrity
+        run: |
+          unzip -t build/Sakuga-Android.apk
+          sha256sum build/Sakuga-Android.apk
+      - name: Publish direct APK download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="android-build-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" build/Sakuga-Android.apk --title "Sakuga Android build ${GITHUB_RUN_NUMBER}" --notes "APK Android de teste. Arquivo verificado com unzip -t antes da publicação." --target "$GITHUB_SHA"
       - uses: actions/upload-artifact@v4
         with:
           name: Sakuga-Android-APK
