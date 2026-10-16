@@ -62,9 +62,11 @@ jobs:
           echo "Template directory version: $TEMPLATE_VERSION"
           mkdir -p "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION"
           cp unpacked/templates/* "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION/"
-          mkdir -p "$HOME/.local/share/godot/export_templates/$VERSION"
-          cp unpacked/templates/* "$HOME/.local/share/godot/export_templates/$VERSION/"
-          ls -l "$HOME/.local/share/godot/export_templates/$VERSION/"android*
+          EXACT_VERSION=$(echo "$VERSION" | cut -d. -f1-4)
+          echo "Godot expects template version: $EXACT_VERSION"
+          mkdir -p "$HOME/.local/share/godot/export_templates/$EXACT_VERSION"
+          cp unpacked/templates/* "$HOME/.local/share/godot/export_templates/$EXACT_VERSION/"
+          ls -lh "$HOME/.local/share/godot/export_templates/$EXACT_VERSION/"android*
       - name: Configure debug signing
         shell: bash
         run: |
